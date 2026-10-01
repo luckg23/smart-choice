@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Smart Choice - Blog</title>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+.blog-page{
+max-width:900px;
+margin:40px auto;
+padding:20px;
+}
+
+.blog-container{
+background:#fff;
+border-radius:20px;
+padding:25px;
+box-shadow:0 10px 35px rgba(0,0,0,.08);
+}
+
+.blog-cover{
+width:100%;
+max-height:500px;
+object-fit:cover;
+border-radius:16px;
+margin-bottom:25px;
+}
+
+.blog-title{
+font-size:clamp(28px,5vw,44px);
+margin-bottom:12px;
+line-height:1.15;
+}
+
+.blog-meta{
+color:#777;
+font-size:14px;
+margin-bottom:25px;
+}
+
+.blog-content{
+font-size:18px;
+line-height:1.8;
+color:#222;
+white-space:pre-wrap;
+word-wrap:break-word;
+}
+
+.blog-content a{
+color:#2563eb;
+text-decoration:underline;
+}
+
+.blog-back{
+display:inline-flex;
+align-items:center;
+gap:8px;
+margin-bottom:20px;
+padding:10px 16px;
+border-radius:10px;
+background:#111;
+color:#fff;
+text-decoration:none;
+}
+
+.loading{
+text-align:center;
+padding:50px 20px;
+}
+
+.error{
+text-align:center;
+padding:50px 20px;
+color:#c00;
+}
+
+@media(max-width:600px){
+.blog-page{
+margin:20px auto;
+padding:12px;
+}
+
+.blog-container{
+padding:18px;
+}
+
+.blog-content{
+font-size:17px;
+}
+}
+</style>
+</head>
+
+<body>
+  <header class="topbar">
+
+<div class="logo">
+<div class="logo-mark">💎</div>
+Smart Choice
+</div>
+
+<nav>
+<a href="index.html">
+<i class="fas fa-home"></i>
+Home
+</a>
+</nav>
+
+</header>
+
+<main class="blog-page">
+
+<a href="index.html" class="blog-back">
+<i class="fas fa-arrow-left"></i>
+Back to Smart Choice
+</a>
+
+<div id="loading" class="loading">
+Loading article... ⏳
+</div>
+
+<article
+id="blog"
+class="blog-container"
+style="display:none;">
+
+<img
+id="blogCover"
+class="blog-cover"
+style="display:none;"
+alt="">
+
+<h1
+id="blogTitle"
+class="blog-title">
+</h1>
+
+<div
+id="blogMeta"
+class="blog-meta">
+</div>
+
+<div
+id="blogContent"
+class="blog-content">
+</div>
+
+<div
+id="sourceBox"
+class="source-box"
+style="display:none;">
+
+<strong>
+🔗 Original / Source Link
+</strong>
+
+<br>
+
+<a
+id="sourceLink"
+href="#"
+target="_blank"
+rel="noopener noreferrer">
+Visit original source
+</a>
+
+</div>
+
+</article>
+
+<div
+id="error"
+class="error"
+style="display:none;">
+</div>
+
+</main>
+
+<script>
+
+const API_URL = "/api/posts";
+
+function getSlug(){
+
+const params =
+new URLSearchParams(
+window.location.search
+);
+
+return params.get("slug") || "";
+
+}
+
+function slugify(text){
+
+return String(text || "")
+.toLowerCase()
+.trim()
+.replace(/[^a-z0-9]+/g,"-")
+.replace(/(^-|-$)/g,"");
+
+}
+async function loadBlog(){
+
+const slug = getSlug();
+
+if(!slug){
+
+showError("Blog article was not found.");
+
+return;
+
+}
+
+try{
+
+const response =
+await fetch(API_URL);
+
+if(!response.ok){
+
+throw new Error(
+"Unable to connect to Smart Choice server."
+);
+
+}
+
+const data =
+await response.json();
+
+const posts =
+Array.isArray(data.posts)
+? data.posts
+: [];
+
+const blog =
+posts.find(function(item){
+
+return (
+item &&
+String(item.type || "")
+.toLowerCase() === "blog" &&
+slugify(item.title) === slug
+);
+
+});
+
+if(!blog){
+
+showError(
+"Sorry, this blog article could not be found."
+);
+
+return;
+
+}
+
+displayBlog(blog);
+
+}catch(error){
+
+console.error(error);
+
+showError(
+"Unable to load this article. Please try again."
+);
+
+}
+
+}
+
+
+function displayBlog(blog){
+
+const loading =
+document.getElementById("loading");
+
+const article =
+document.getElementById("blog");
+
+const title =
+document.getElementById("blogTitle");
+
+const meta =
+document.getElementById("blogMeta");
+
+const content =
+document.getElementById("blogContent");
+
+const cover =
+document.getElementById("blogCover");
+
+
+title.textContent =
+blog.title || "Untitled Article";
+
+
+meta.textContent =
+[
+blog.date,
+blog.category
+]
+.filter(Boolean)
+.join(" • ");
+
+
+if(blog.cover){
+
+cover.src = blog.cover;
+
+cover.alt =
+blog.title || "Blog image";
+
+cover.style.display =
+"block";
+
+}
+
+
+content.innerHTML =
+formatContent(blog);
+
+
+const sourceBox =
+document.getElementById("sourceBox");
+
+const sourceLink =
+document.getElementById("sourceLink");
+
+
+const externalLink =
+blog.link ||
+blog.url ||
+blog.source ||
+blog.sourceLink;
+
+
+if(externalLink){
+
+sourceLink.href =
+externalLink;
+
+sourceBox.style.display =
+"block";
+
+}
+
+
+loading.style.display =
+"none";
+
+article.style.display =
+"block";
+
+
+document.title =
+(blog.title || "Smart Choice Blog") +
+" - Smart Choice";
+
+}
+
+
+function formatContent(blog){
+
+let text =
+blog.content ||
+blog.article ||
+blog.body ||
+blog.desc ||
+"";
+
+
+if(!text){
+
+return "<p>No article content available.</p>";
+
+}
+
+
+return String(text)
+.split(/\n\s*\n/)
+.map(function(paragraph){
+
+return "<p>" +
+escapeHTML(paragraph)
+.replace(/\n/g,"<br>") +
+"</p>";
+
+})
+.join("");
+
+}
+
+
+function escapeHTML(text){
+
+return String(text)
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+
+}
+
+
+function showError(message){
+
+document.getElementById("loading")
+.style.display="none";
+
+const error =
+document.getElementById("error");
+
+error.textContent =
+message;
+
+error.style.display =
+"block";
+
+}
+
+
+loadBlog();
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+>
+
+<title>Smart Choice - Blog</title>
+
+<link
+    rel="stylesheet"
+    href="style.css"
+>
+
+<style>
+
+.post-container{
+    max-width:850px;
+    margin:30px auto;
+    background:#fff;
+    border-radius:18px;
+    padding:25px;
+    box-shadow:0 4px 20px rgba(0,0,0,.08);
+}
+
+.post-container img{
+    width:100%;
+    max-height:450px;
+    object-fit:cover;
+    border-radius:15px;
+    display:block;
+    margin-bottom:20px;
+}
+
+.post-container h1{
+    color:#0f2e1f;
+    font-size:32px;
+    line-height:1.3;
+    margin:10px 0;
+}
+
+.post-meta{
+    color:#777;
+    font-size:14px;
+    margin-bottom:25px;
+}
+
+.post-body{
+    color:#222;
+    font-size:17px;
+    line-height:1.9;
+    white-space:pre-wrap;
+    word-wrap:break-word;
+}
+
+.btn-back{
+    display:inline-block;
+    margin:20px 0;
+    color:#14532d;
+    text-decoration:none;
+    font-weight:700;
+}
+
+.btn-buy{
+    display:block;
+    text-align:center;
+    background:#f59e0b;
+    color:#fff;
+    padding:15px;
+    border-radius:10px;
+    text-decoration:none;
+    font-weight:800;
+    margin-top:25px;
+}
+
+.loading{
+    text-align:center;
+    padding:50px 10px;
+}
+
+.error{
+    text-align:center;
+    padding:50px 10px;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<header class="topbar">
+
+    <div class="logo">
+
+        <div class="logo-mark">💎</div>
+
+        Smart Choice
+
+    </div>
+
+    <a
+        href="/index.html"
+        class="btn-back"
+    >
+        ← Home
+    </a>
+
+</header>
+
+
+<main
+    class="post-container"
+    id="postBox"
+>
+
+    <div class="loading">
+
+        Loading article... ⏳
+
+    </div>
+
+</main>
+
+
+<script>
+
+/* ==============================
+   JSONBIN
+============================== */
+
+const BIN_ID =
+    "6abc8c39ac6210605a041394";
+
+
+/*
+Use the SAME JSONBin Master Key
+you placed inside script.js.
+
+Do not change anything else.
+*/
+
+const MASTER_KEY =    "$2a$10$3RW8/91mUub3ctcs1NQ7cOfZ.TiMNvJ.LmTqOso6.o5fLpcVKcGxu";
+
+
+/* ==============================
+   SLUG
+============================== */
+
+function slugify(text){
+
+    return String(text || "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g,"-")
+        .replace(/(^-|-$)/g,"");
+
+}
+
+
+/* ==============================
+   HTML ESCAPE
+============================== */
+
+function escapeHTML(text){
+
+    return String(text || "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+
+}
+
+
+/* ==============================
+   GET ARTICLE SLUG
+============================== */
+
+function getSlug(){
+
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+
+    let slug =
+        params.get("s");
+
+
+    /*
+    This also supports:
+
+    /blog/article-name
+    */
+
+    if(!slug){
+
+        const path =
+            window.location.pathname;
+
+
+        const parts =
+            path.split("/blog/");
+
+
+        if(parts.length > 1){
+
+            slug =
+                parts[1];
+
+        }
+
+    }
+
+
+    return decodeURIComponent(
+        slug || ""
+    ).replace(/\/$/,"");
+
+}
+
+
+/* ==============================
+   LOAD ARTICLE
+============================== */
+
+async function loadPost(){
+
+    const box =
+        document.getElementById(
+            "postBox"
+        );
+
+
+    const slug =
+        getSlug();
+
+
+    if(!slug){
+
+        box.innerHTML = `
+
+            <div class="error">
+
+                <h2>
+                    Article not found
+                </h2>
+
+                <p>
+                    No article was selected.
+                </p>
+
+                <a
+                    href="/index.html"
+                    class="btn-back"
+                >
+                    ← Back Home
+                </a>
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    try{
+
+        const response =
+            await fetch(
+                `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
+                {
+                    method:"GET",
+
+                    headers:{
+                        "X-Master-Key":
+                            MASTER_KEY
+                    }
+                }
+            );
+
+
+        if(!response.ok){
+
+            throw new Error(
+                "Unable to load article. HTTP " +
+                response.status
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        let posts =
+            data.record;
+
+
+        if(!Array.isArray(posts)){
+
+            posts = [];
+
+        }
+
+
+        /*
+        Find the Blog using its title slug.
+        */
+
+        let post =
+            posts.find(function(item){
+
+                return (
+                    item &&
+                    item.type &&
+                    String(item.type)
+                        .toLowerCase() === "blog" &&
+                    slugify(item.title) === slug
+                );
+
+            });
+
+
+        /*
+        Backup search by title in case
+        the type is missing.
+        */
+
+        if(!post){
+
+            post =
+                posts.find(function(item){
+
+                    return (
+                        item &&
+                        slugify(item.title) === slug
+                    );
+
+                });
+
+        }
+
+
+        if(!post){
+
+            box.innerHTML = `
+
+                <div class="error">
+
+                    <h2>
+                        Article not found
+                    </h2>
+
+                    <p>
+                        We could not find this blog post.
+                    </p>
+
+                    <a
+                        href="/index.html"
+                        class="btn-back"
+                    >
+                        ← Back to Smart Choice
+                    </a>
+
+                </div>
+
+            `;
+
+            return;
+
+        }
+
+
+        document.title =
+            `${post.title} - Smart Choice`;
+
+
+        const title =
+            escapeHTML(
+                post.title ||
+                "Untitled Article"
+            );
+
+
+        const date =
+            escapeHTML(
+                post.date || ""
+            );
+
+
+        const category =
+            escapeHTML(
+                post.category || "Blog"
+            );
+
+
+        /*
+        Blog content is stored in desc
+        by your existing admin.html.
+        */
+
+        const article =
+            escapeHTML(
+                post.desc ||
+                post.article ||
+                "No article content available."
+            );
+
+
+        const formattedArticle =
+            article.replace(
+                /\n/g,
+                "<br>"
+            );
+
+
+        let coverHTML = "";
+
+
+        if(post.cover){
+
+            coverHTML = `
+
+                <img
+                    src="${escapeHTML(post.cover)}"
+                    alt="${title}"
+                    onerror="
+                        this.style.display='none'
+                    "
+                >
+
+            `;
+
+        }
+
+
+        let buyHTML = "";
+
+
+        if(post.affiliate){
+
+            buyHTML = `
+
+                <a
+                    href="${escapeHTML(post.affiliate)}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn-buy"
+                >
+
+                    🛒 Buy Now
+
+                </a>
+
+                <small
+                    style="
+                        display:block;
+                        text-align:center;
+                        color:#777;
+                        margin-top:8px;
+                    "
+                >
+                    External link opens only when
+                    you click Buy Now.
+                </small>
+
+            `;
+
+        }
+
+
+        box.innerHTML = `
+
+            ${coverHTML}
+
+            <h1>
+                ${title}
+            </h1>
+
+            <div class="post-meta">
+
+                ${date}
+
+                ${date && category ? " • " : ""}
+
+                ${category}
+
+            </div>
+
+            <div class="post-body">
+
+                ${formattedArticle}
+
+            </div>
+
+            ${buyHTML}
+
+            <a
+                href="/index.html"
+                class="btn-back"
+            >
+                ← Back to all posts
+            </a>
+
+        `;
+
+
+    }catch(error){
+
+        console.error(
+            "Blog loading error:",
+            error
+        );
+
+
+        box.innerHTML = `
+
+            <div class="error">
+
+                <h2>
+                    Unable to load article
+                </h2>
+
+                <p>
+                    ${escapeHTML(
+                        error.message
+                    )}
+                </p>
+
+                <a
+                    href="/index.html"
+                    class="btn-back"
+                >
+                    ← Back Home
+                </a>
+
+            </div>
+
+        `;
+
+    }
+
+}
+
+
+loadPost();
+
+</script>
+
+
+</body>
+
+</html>
